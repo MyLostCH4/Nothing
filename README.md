@@ -2,6 +2,46 @@
 
 这是个人长期数据管理软件的桌面端项目。当前版本为 **1.5.0**，使用 Qt Widgets，自绘收支趋势图，不依赖 Qt Charts。
 
+## 下载与安装（Windows x64）
+
+编译好的安装包不在仓库源码文件列表中，而是在 GitHub 的 **Releases** 页面：
+
+- [打开最新 Release](https://github.com/MyLostCH4/Nothing/releases/latest)
+- [直接下载 Nothing_Setup_1.5.exe](https://github.com/MyLostCH4/Nothing/releases/download/v1.5.0/Nothing_Setup_1.5.exe)
+
+也可以从仓库首页右侧找到 **Releases**，进入最新版本后展开 **Assets**，下载
+`Nothing_Setup_1.5.exe`。`Source code (zip)` 和 `Source code (tar.gz)` 只是源码压缩包，
+不能直接安装。
+
+### 安装步骤
+
+1. 下载 `Nothing_Setup_1.5.exe`。
+2. 双击安装包，在询问是否安装 Nothing 时确认继续。
+3. 安装程序会部署 Nothing、Qt 6、SQLite 驱动和所需的 VC++ 运行库。
+4. 安装完成后 Nothing 会自动启动，并在桌面生成 `Nothing` 快捷方式。
+
+安装包目前没有商业代码签名，因此 Windows SmartScreen 可能显示“Windows 已保护你的电脑”。
+请先确认文件来自本仓库的 Release，并可在 PowerShell 中校验：
+
+```powershell
+Get-FileHash .\Nothing_Setup_1.5.exe -Algorithm SHA256
+```
+
+当前 v1.5.0 安装包的 SHA-256 应为：
+
+```text
+38B8D7A6427C13E54A2CF39F9B199309D4B75C7B49AB2E7740C07962EAD9992D
+```
+
+确认下载来源和校验值无误后，可以在 SmartScreen 界面选择“更多信息”后继续运行。
+
+### 安装位置与升级
+
+- 电脑有 D 盘时，程序默认安装到 `D:\MyQt\PersonalDataManager\app`。
+- 没有 D 盘时，程序安装到 `%LOCALAPPDATA%\PersonalDataManager\app`。
+- 直接运行更新版本的安装包即可升级，安装过程不会覆盖原有 SQLite 数据。
+- 可以在 Windows“设置 → 应用 → 已安装的应用”中卸载 `Nothing`；卸载时可选择保留或删除个人数据。
+
 ## 已实现页面
 
 - 极简数据概览
@@ -28,9 +68,7 @@
 
 ## Windows 安装包
 
-单文件安装包输出到：`D:\MyQt\Package\Nothing_Setup_1.5.exe`
-
-安装包包含 Qt 运行库、Qt SQL、SQLite 驱动和 VC++ 运行库，可复制到其他 64 位 Windows 电脑安装。目标电脑有 D 盘时默认安装到 `D:\MyQt\PersonalDataManager\app`；没有 D 盘时使用当前用户的本地应用目录。安装或升级不会覆盖 SQLite 数据文件。
+单文件安装包发布在 GitHub Releases，不需要预先安装 Qt 或 Visual Studio。安装包包含 Qt 运行库、Qt SQL、SQLite 驱动和 VC++ 运行库，可直接复制到其他 64 位 Windows 电脑安装。
 
 ## 本机编译
 
