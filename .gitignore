@@ -1,0 +1,25 @@
+/build/
+/.qt/
+/.qtcreator/
+/CMakeUserPresets.json
+*.user
+*.user.*
+
+# Local build and packaging output
+*.exe
+*.dll
+*.pdb
+*.zip
+*.log
+
+# Personal/runtime data must never be committed
+/data/
+/dev-data/
+*.db
+*.db-shm
+*.db-wal
+*.nothingdata
+个人数据导出_*/
+
+# Local visual verification artifact
+/sidebar_icon_check.png
