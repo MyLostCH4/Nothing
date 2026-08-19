@@ -2,6 +2,7 @@
 
 #include "datastore.h"
 #include "trendchart.h"
+#include "worknoteeditor.h"
 
 #include <QAbstractButton>
 #include <QApplication>
@@ -27,6 +28,7 @@
 #include <QPushButton>
 #include <QProcess>
 #include <QPixmap>
+#include <QSizePolicy>
 #include <QStackedWidget>
 #include <QTableWidget>
 #include <QTableWidgetItem>
@@ -652,16 +654,22 @@ QWidget *MainWindow::createOverviewPage()
             workLayout->addWidget(separator);
         }
         auto *section = new QWidget;
+        section->setMinimumWidth(0);
+        section->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
         auto *sectionLayout = new QHBoxLayout(section);
         sectionLayout->setContentsMargins(8, 2, 8, 2);
         sectionLayout->setSpacing(10);
-        sectionLayout->addWidget(label(workSections.at(i), "sectionTitle"));
+        auto *sectionName = label(workSections.at(i), "sectionTitle");
+        sectionName->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Preferred);
+        sectionLayout->addWidget(sectionName);
         auto *summary = label(m_latestWorkSummaries.value(workSections.at(i),
                                                           QStringLiteral("暂无记录")));
         summary->setProperty("clearableResearch", true);
         summary->setWordWrap(false);
+        summary->setMinimumWidth(0);
+        summary->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
         m_workOverviewLabels[workSections.at(i)] = summary;
-        sectionLayout->addWidget(summary);
+        sectionLayout->addWidget(summary, 1);
         workLayout->addWidget(section, 1);
     }
     root->addWidget(workBrief);
@@ -1561,6 +1569,11 @@ QWidget *MainWindow::createResearchPage()
             for (const auto &row : rows)
                 prependRow(table, {row.at(1).toString(), row.at(2).toString()}, row.at(0).toLongLong());
         }
+        table->setToolTip(QStringLiteral("双击任意记录可打开详细编辑窗口"));
+        connect(table, &QTableWidget::cellDoubleClicked, page,
+                [this, table, name](int row, int) {
+                    openWorkNoteEditor(table, name, row);
+                });
         layout->addWidget(table, 1);
         columnsLayout->addWidget(column, 1);
 
@@ -1580,11 +1593,7 @@ QWidget *MainWindow::createResearchPage()
                 }))
                 return;
             prependRow(table, {recordedAt, ideaText}, recordId);
-            const QString summaryText = QStringLiteral("%1  %2")
-                                            .arg(recordedAt.left(10).mid(5), ideaText);
-            m_latestWorkSummaries[name] = summaryText;
-            if (m_workOverviewLabels.value(name))
-                m_workOverviewLabels.value(name)->setText(summaryText);
+            refreshWorkSummary(name);
             idea->clear();
         });
     };
@@ -1595,6 +1604,84 @@ QWidget *MainWindow::createResearchPage()
 
     root->addWidget(columns, 1);
     return page;
+}
+
+void MainWindow::openWorkNoteEditor(QTableWidget *table, const QString &section, int row)
+{
+    if (!table || !m_store || !m_store->isReady())
+        return;
+
+    const qint64 recordId = tableRecordId(table, row);
+    if (recordId <= 0)
+        return;
+
+    if (QWidget *existing = m_openWorkNoteEditors.value(recordId).data()) {
+        existing->show();
+        existing->raise();
+        existing->activateWindow();
+        return;
+    }
+
+    const auto rows = m_store->queryRows(QStringLiteral(
+        "SELECT recorded_at, idea FROM work_notes WHERE id = ? AND section = ? LIMIT 1"),
+        {recordId, section});
+    if (rows.isEmpty()) {
+        QMessageBox::warning(this, QStringLiteral("无法打开"),
+                             QStringLiteral("这条 work 记录已不存在。"));
+        return;
+    }
+
+    const QString recordedAt = rows.first().at(0).toString();
+    const QString text = rows.first().at(1).toString();
+    auto *editor = new WorkNoteEditor(
+        recordId, section, recordedAt, text,
+        [this, table, section](qint64 id, const QString &updatedText) {
+            return saveWorkNote(table, section, id, updatedText);
+        },
+        this);
+    m_openWorkNoteEditors[recordId] = editor;
+    editor->show();
+}
+
+bool MainWindow::saveWorkNote(QTableWidget *table, const QString &section,
+                              qint64 recordId, const QString &text)
+{
+    if (!m_store || !m_store->isReady() || recordId <= 0)
+        return false;
+    if (!m_store->execute(QStringLiteral("UPDATE work_notes SET idea = ? WHERE id = ?"),
+                          {text, recordId}))
+        return false;
+
+    if (table) {
+        for (int row = 0; row < table->rowCount(); ++row) {
+            if (tableRecordId(table, row) != recordId)
+                continue;
+            if (!table->item(row, 1))
+                table->setItem(row, 1, new QTableWidgetItem);
+            table->item(row, 1)->setText(text);
+            table->item(row, 1)->setToolTip(text);
+            break;
+        }
+    }
+    refreshWorkSummary(section);
+    return true;
+}
+
+void MainWindow::refreshWorkSummary(const QString &section)
+{
+    if (!m_store || !m_store->isReady())
+        return;
+    const auto rows = m_store->queryRows(QStringLiteral(
+        "SELECT recorded_at, idea FROM work_notes WHERE section = ? ORDER BY id DESC LIMIT 1"),
+        {section});
+    const QString summary = rows.isEmpty()
+        ? QStringLiteral("暂无记录")
+        : QStringLiteral("%1  %2")
+              .arg(rows.first().at(0).toString().left(10).mid(5),
+                   rows.first().at(1).toString());
+    m_latestWorkSummaries[section] = summary;
+    if (m_workOverviewLabels.value(section))
+        m_workOverviewLabels.value(section)->setText(summary);
 }
 
 void MainWindow::loadStoredState()

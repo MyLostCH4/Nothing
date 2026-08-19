@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(PersonalDataManager VERSION 1.4.0 LANGUAGES CXX)
+project(PersonalDataManager VERSION 1.5.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -19,6 +19,8 @@ qt_add_executable(personal_data_manager WIN32
     src/mainwindow.h
     src/trendchart.cpp
     src/trendchart.h
+    src/worknoteeditor.cpp
+    src/worknoteeditor.h
     resources/resources.qrc
 )
 

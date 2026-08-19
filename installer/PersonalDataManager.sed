@@ -25,9 +25,9 @@ SourceFiles=SourceFiles
 [Strings]
 InstallPrompt="Install Nothing?"
 DisplayLicense=""
-FinishMessage="Installation completed. Nothing 1.4 is ready."
-TargetName="D:\MyQt\Package\Nothing_Setup_1.4.exe"
-FriendlyName="Nothing 1.4 Setup"
+FinishMessage="Installation completed. Nothing 1.5 is ready."
+TargetName="D:\MyQt\Package\Nothing_Setup_1.5.exe"
+FriendlyName="Nothing 1.5 Setup"
 AppLaunched="powershell.exe -NoProfile -ExecutionPolicy Bypass -File install.ps1"
 PostInstallCmd="<None>"
 AdminQuietInstCmd="powershell.exe -NoProfile -ExecutionPolicy Bypass -File install.ps1"

@@ -3,6 +3,7 @@
 #include <QMainWindow>
 #include <QDate>
 #include <QMap>
+#include <QPointer>
 #include <QStringList>
 #include <QVector>
 
@@ -41,7 +42,11 @@ private:
     void refreshDailyCharts();
     void refreshChartsFromStoredState();
     void refreshBodyLatestLabels();
+    void refreshWorkSummary(const QString &section);
     void loadStoredState();
+    void openWorkNoteEditor(QTableWidget *table, const QString &section, int row);
+    bool saveWorkNote(QTableWidget *table, const QString &section, qint64 recordId,
+                      const QString &text);
     void enableRowDeletion(QTableWidget *table, const QString &storageTable);
     bool deleteStoredRecord(const QString &storageTable, qint64 recordId);
     void removeRecordFromTable(QTableWidget *table, qint64 recordId);
@@ -80,6 +85,7 @@ private:
     QMap<QDate, double> m_storedWeightHistory;
     int m_overviewRangeDays = 30;
     QMap<QString, QString> m_latestWorkSummaries;
+    QMap<qint64, QPointer<QWidget>> m_openWorkNoteEditors;
 };
 
 QMainWindow *createMainWindow();
