@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 DataLineChart::DataLineChart(Series series, QWidget *parent)
     : QWidget(parent)
@@ -87,35 +88,97 @@ void DataLineChart::paintEvent(QPaintEvent *event)
     if (!m_dailyValues.isEmpty() && m_dailyValues.lastKey() > endDate)
         endDate = m_dailyValues.lastKey();
     const QDate startDate = endDate.addDays(-(count - 1));
+    const bool isWeight = m_series == Series::Weight;
+    const double missingValue = std::numeric_limits<double>::quiet_NaN();
     QVector<double> visibleValues;
     visibleValues.reserve(count);
-    double carriedValue = 0.0;
-    auto beforeStart = m_dailyValues.lowerBound(startDate);
-    if (beforeStart != m_dailyValues.begin()) {
-        --beforeStart;
-        carriedValue = beforeStart.value();
+    // Balances are continuous state and therefore carry forward. Weight is a
+    // sampled measurement: missing days must remain missing, otherwise the chart
+    // invents zeroes/steps and destroys the useful Y-axis range.
+    double carriedValue = isWeight ? missingValue : 0.0;
+    if (!isWeight) {
+        auto beforeStart = m_dailyValues.lowerBound(startDate);
+        if (beforeStart != m_dailyValues.begin()) {
+            --beforeStart;
+            carriedValue = beforeStart.value();
+        }
     }
     for (int i = 0; i < count; ++i) {
         const QDate date = startDate.addDays(i);
-        if (m_dailyValues.contains(date))
-            carriedValue = m_dailyValues.value(date);
-        visibleValues.append(carriedValue);
+        if (isWeight) {
+            const double candidate = m_dailyValues.value(date, missingValue);
+            visibleValues.append(std::isfinite(candidate) && candidate > 0.0
+                                     ? candidate
+                                     : missingValue);
+        } else {
+            if (m_dailyValues.contains(date))
+                carriedValue = m_dailyValues.value(date);
+            visibleValues.append(carriedValue);
+        }
     }
-    const double rawMin = *std::min_element(visibleValues.cbegin(), visibleValues.cend());
-    const double rawMax = *std::max_element(visibleValues.cbegin(), visibleValues.cend());
-    const bool isWeight = m_series == Series::Weight;
-    const double basePadding = std::max((rawMax - rawMin) * 0.12, isWeight ? 0.2 : 250.0);
-    const double step = isWeight ? 0.5 : 500.0;
-    const double axisMin = std::floor((rawMin - basePadding) / step) * step;
-    const double axisMax = std::ceil((rawMax + basePadding) / step) * step;
-    const double span = std::max(axisMax - axisMin, step);
+
+    QVector<double> scaleValues;
+    scaleValues.reserve(visibleValues.size());
+    for (const double value : visibleValues) {
+        if (std::isfinite(value))
+            scaleValues.append(value);
+    }
+    if (scaleValues.isEmpty()) {
+        painter.setPen(QColor("#111111"));
+        painter.setFont(QFont(QStringLiteral("Microsoft YaHei UI"), 10));
+        painter.drawText(rect(), Qt::AlignCenter, QStringLiteral("暂无数据"));
+        return;
+    }
+
+    const double rawMin = *std::min_element(scaleValues.cbegin(), scaleValues.cend());
+    const double rawMax = *std::max_element(scaleValues.cbegin(), scaleValues.cend());
+    double axisMin = 0.0;
+    double axisMax = 0.0;
+    double weightTickStep = 0.5;
+    if (isWeight) {
+        // Focus the scale on the measurements in view. A 15% margin keeps the
+        // line away from the frame, while a 2 kg minimum span avoids making tiny
+        // sensor/rounding changes look disproportionately dramatic.
+        const double dataSpan = rawMax - rawMin;
+        const double targetSpan = std::max(dataSpan * 1.30, 2.0);
+        const double center = (rawMin + rawMax) / 2.0;
+        const double targetMin = center - targetSpan / 2.0;
+        const double targetMax = center + targetSpan / 2.0;
+        const auto niceCeiling = [](double value) {
+            const double exponent = std::floor(std::log10(std::max(value, 1e-9)));
+            const double magnitude = std::pow(10.0, exponent);
+            const double fraction = value / magnitude;
+            double niceFraction = 10.0;
+            if (fraction <= 1.0)
+                niceFraction = 1.0;
+            else if (fraction <= 2.0)
+                niceFraction = 2.0;
+            else if (fraction <= 2.5)
+                niceFraction = 2.5;
+            else if (fraction <= 5.0)
+                niceFraction = 5.0;
+            return niceFraction * magnitude;
+        };
+        weightTickStep = niceCeiling(targetSpan / 4.0);
+        axisMin = std::floor(targetMin / weightTickStep) * weightTickStep;
+        axisMax = std::ceil(targetMax / weightTickStep) * weightTickStep;
+    } else {
+        const double basePadding = std::max((rawMax - rawMin) * 0.12, 250.0);
+        constexpr double moneyTickStep = 500.0;
+        axisMin = std::floor((rawMin - basePadding) / moneyTickStep) * moneyTickStep;
+        axisMax = std::ceil((rawMax + basePadding) / moneyTickStep) * moneyTickStep;
+    }
+    const double minimumSpan = isWeight ? weightTickStep : 500.0;
+    const double span = std::max(axisMax - axisMin, minimumSpan);
 
     painter.setFont(QFont(QStringLiteral("Microsoft YaHei UI"), 8));
     painter.setPen(QColor("#111111"));
     painter.drawText(QRectF(0, 0, 84, 20), Qt::AlignCenter,
                      isWeight ? QStringLiteral("体重（kg）") : QStringLiteral("金额（元）"));
 
-    constexpr int gridCount = 4;
+    const int gridCount = isWeight
+        ? std::clamp(static_cast<int>(std::lround((axisMax - axisMin) / weightTickStep)), 4, 6)
+        : 4;
     for (int line = 0; line <= gridCount; ++line) {
         const qreal ratio = line / static_cast<qreal>(gridCount);
         const qreal y = plot.bottom() - ratio * plot.height();
@@ -142,10 +205,18 @@ void DataLineChart::paintEvent(QPaintEvent *event)
     }
 
     QPainterPath path;
+    bool pathStarted = false;
     for (int i = 0; i < count; ++i) {
+        if (!std::isfinite(visibleValues.at(i)))
+            continue;
         const qreal x = plot.left() + i / static_cast<qreal>(pointDivisor) * plot.width();
         const qreal y = plot.bottom() - (visibleValues.at(i) - axisMin) / span * plot.height();
-        i == 0 ? path.moveTo(x, y) : path.lineTo(x, y);
+        if (!pathStarted) {
+            path.moveTo(x, y);
+            pathStarted = true;
+        } else {
+            path.lineTo(x, y);
+        }
     }
 
     QColor lineColor("#165fd0");
@@ -161,6 +232,9 @@ void DataLineChart::paintEvent(QPaintEvent *event)
     if (m_rangeDays <= 14) for (int i = 0; i < count; ++i) {
         const QDate date = startDate.addDays(i);
         if (!m_recordedDates.contains(date))
+            continue;
+        const double recordedValue = m_dailyValues.value(date, missingValue);
+        if (!std::isfinite(recordedValue) || (isWeight && recordedValue <= 0.0))
             continue;
         const qreal x = plot.left() + i / static_cast<qreal>(pointDivisor) * plot.width();
         const qreal y = plot.bottom() - (visibleValues.at(i) - axisMin) / span * plot.height();

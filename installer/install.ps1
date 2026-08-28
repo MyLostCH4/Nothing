@@ -3,6 +3,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$appVersion = '1.5.1'
 
 if (Test-Path -LiteralPath 'D:\') {
     $installRoot = 'D:\MyQt\PersonalDataManager'
@@ -93,7 +94,7 @@ $estimatedSize = [Math]::Max(1, [int]((Get-ChildItem -LiteralPath $appDirectory 
 
 New-Item -Path $uninstallRegistryPath -Force | Out-Null
 New-ItemProperty -Path $uninstallRegistryPath -Name 'DisplayName' -Value 'Nothing' -PropertyType String -Force | Out-Null
-New-ItemProperty -Path $uninstallRegistryPath -Name 'DisplayVersion' -Value '1.4.0' -PropertyType String -Force | Out-Null
+New-ItemProperty -Path $uninstallRegistryPath -Name 'DisplayVersion' -Value $appVersion -PropertyType String -Force | Out-Null
 New-ItemProperty -Path $uninstallRegistryPath -Name 'Publisher' -Value 'Nothing' -PropertyType String -Force | Out-Null
 New-ItemProperty -Path $uninstallRegistryPath -Name 'DisplayIcon' -Value $iconPath -PropertyType String -Force | Out-Null
 New-ItemProperty -Path $uninstallRegistryPath -Name 'InstallLocation' -Value $installRoot -PropertyType String -Force | Out-Null
