@@ -1497,6 +1497,25 @@ QWidget *MainWindow::createResearchPage()
         const QString ae = afternoonEnd->time().toString(QStringLiteral("HH:mm"));
         const QString es = eveningStart->time().toString(QStringLiteral("HH:mm"));
         const QString ee = eveningEnd->time().toString(QStringLiteral("HH:mm"));
+
+        const bool dateAlreadyRecorded = m_store && m_store->isReady()
+            && m_store->scalar(QStringLiteral(
+                   "SELECT COUNT(*) FROM work_hours WHERE work_date = ?"),
+                   {dateText}) > 0.0;
+        if (dateAlreadyRecorded) {
+            const auto answer = QMessageBox::question(
+                this, QStringLiteral("确认覆盖工时记录"),
+                QStringLiteral("%1 已经存在工时记录。\n\n"
+                               "继续后，原记录将被当前输入的时间覆盖。是否继续？")
+                    .arg(dateText),
+                QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+            if (answer != QMessageBox::Yes) {
+                workDate->setFocus();
+                workDate->selectAll();
+                return;
+            }
+        }
+
         if (!runStorageTransaction([=] {
                 return m_store->execute(QStringLiteral(
                     "INSERT INTO work_hours(work_date, morning_start, morning_end, afternoon_start, "

@@ -25,9 +25,9 @@ SourceFiles=SourceFiles
 [Strings]
 InstallPrompt="Install Nothing?"
 DisplayLicense=""
-FinishMessage="Installation completed. Nothing 1.5.1 is ready."
-TargetName="D:\MyQt\Package\Nothing_Setup_1.5.1.exe"
-FriendlyName="Nothing 1.5.1 Setup"
+FinishMessage="Installation completed. Nothing 1.5.2 is ready."
+TargetName="D:\MyQt\Package\Nothing_Setup_1.5.2.exe"
+FriendlyName="Nothing 1.5.2 Setup"
 AppLaunched="powershell.exe -NoProfile -ExecutionPolicy Bypass -File install.ps1"
 PostInstallCmd="<None>"
 AdminQuietInstCmd="powershell.exe -NoProfile -ExecutionPolicy Bypass -File install.ps1"
@@ -38,7 +38,7 @@ FILE2="install.ps1"
 FILE3="uninstall.ps1"
 
 [SourceFiles]
-SourceFiles0=D:\MyQt\Package\PersonalDataManager_1.5.1\staging\
+SourceFiles0=D:\MyQt\Package\PersonalDataManager_1.5.2\staging\
 
 [SourceFiles0]
 %FILE0%=

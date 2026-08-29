@@ -3,7 +3,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$appVersion = '1.5.1'
+$appVersion = '1.5.2'
 
 if (Test-Path -LiteralPath 'D:\') {
     $installRoot = 'D:\MyQt\PersonalDataManager'
