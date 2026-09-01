@@ -223,8 +223,6 @@ MainWindow::MainWindow(QWidget *parent)
         if (processed <= 0)
             return;
         loadStoredState();
-        if (m_liquidChart)
-            m_liquidChart->appendValue(m_liquidFunds);
         if (m_expensePie)
             m_expensePie->setCategoryValues(m_expenseCategories);
         if (m_expenseTable) {
@@ -760,7 +758,7 @@ QWidget *MainWindow::createMoneyPage(const QString &title, const QStringList &ca
             m_expenseCategories[categoryText] += addedAmount;
             m_expensePie->setCategoryValues(m_expenseCategories);
         }
-        m_liquidChart->appendValue(m_liquidFunds, QDate::fromString(dateText, Qt::ISODate));
+        rebuildLiquidHistory();
         refreshOverview();
         amount->setValue(0.0);
         note->clear();
@@ -1068,8 +1066,7 @@ QWidget *MainWindow::createHuabeiPage()
         prependRow(table, {repaymentDateText,
                            QStringLiteral("还款"), moneyText(paidAmount),
                            repaymentNoteText}, recordId);
-        m_liquidChart->appendValue(m_liquidFunds,
-                                   QDate::fromString(repaymentDateText, Qt::ISODate));
+        rebuildLiquidHistory();
         refreshOverview();
         repaymentAmount->setValue(0.0);
         repaymentNote->clear();
@@ -1172,7 +1169,7 @@ QWidget *MainWindow::createVaultPage()
         m_vaultBalance = newVaultBalance;
         if (deposit) {
             m_liquidFunds = newLiquidFunds;
-            m_liquidChart->appendValue(m_liquidFunds, QDate::fromString(dateText, Qt::ISODate));
+            rebuildLiquidHistory();
         }
         balanceValue->setProperty("vaultBalance", m_vaultBalance);
         balanceValue->setText(moneyText(m_vaultBalance));
@@ -1751,7 +1748,7 @@ void MainWindow::loadStoredState()
         }
         return history;
     };
-    m_storedLiquidHistory = loadSnapshotHistory(QStringLiteral("liquid"));
+    rebuildLiquidHistory();
     m_storedVaultHistory = loadSnapshotHistory(QStringLiteral("vault"));
     m_storedWeightHistory.clear();
     const auto weightHistory = m_store->queryRows(QStringLiteral(
@@ -1761,6 +1758,52 @@ void MainWindow::loadStoredState()
         if (date.isValid())
             m_storedWeightHistory[date] = row.at(1).toDouble();
     }
+}
+
+void MainWindow::rebuildLiquidHistory()
+{
+    m_storedLiquidHistory.clear();
+    if (!m_store || !m_store->isReady())
+        return;
+
+    // Build one end-of-day balance per transaction date. This deliberately
+    // ignores chart_snapshots: snapshots describe entry order, which differs
+    // from transaction order when the user backfills an earlier date.
+    const auto rows = m_store->queryRows(QStringLiteral(
+        "SELECT event_date, SUM(delta) FROM ("
+        "SELECT date AS event_date, amount AS delta FROM income "
+        "UNION ALL "
+        "SELECT date AS event_date, -amount AS delta FROM expense WHERE payment='流动资金' "
+        "UNION ALL "
+        "SELECT date AS event_date, -amount AS delta FROM huabei WHERE operation='还款' "
+        "UNION ALL "
+        "SELECT date AS event_date, -amount AS delta FROM vault WHERE operation='存入'"
+        ") GROUP BY event_date ORDER BY event_date"));
+
+    double ledgerNet = 0.0;
+    for (const auto &row : rows) {
+        if (QDate::fromString(row.at(0).toString(), Qt::ISODate).isValid())
+            ledgerNet += row.at(1).toDouble();
+    }
+
+    // Preserve a possible opening balance from an older/imported database that
+    // predates the current transaction ledger, then apply every dated change.
+    double runningBalance = m_liquidFunds - ledgerNet;
+    for (const auto &row : rows) {
+        const QDate date = QDate::fromString(row.at(0).toString(), Qt::ISODate);
+        if (!date.isValid())
+            continue;
+        runningBalance += row.at(1).toDouble();
+        m_storedLiquidHistory[date] = runningBalance;
+    }
+
+    if (!m_liquidChart)
+        return;
+    m_liquidChart->clearData();
+    if (m_storedLiquidHistory.isEmpty())
+        m_liquidChart->setCurrentValue(m_liquidFunds);
+    else
+        m_liquidChart->setDatedValues(m_storedLiquidHistory);
 }
 
 bool MainWindow::runStorageTransaction(const std::function<bool()> &action)

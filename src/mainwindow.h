@@ -40,6 +40,7 @@ private:
     void clearAllData();
     void refreshOverview();
     void refreshDailyCharts();
+    void rebuildLiquidHistory();
     void refreshChartsFromStoredState();
     void refreshBodyLatestLabels();
     void refreshWorkSummary(const QString &section);

@@ -1,19 +1,19 @@
 # 个人数据管理（Qt 6 / C++）
 
-个人长期数据管理软件的桌面端项目。当前版本为 **1.5.2**
+个人长期数据管理软件的桌面端项目。当前版本为 **1.5.3**
 
 ## 下载与安装（Windows x64）
 
  **Releases** 页面：
 
 - [打开最新 Release](https://github.com/MyLostCH4/Nothing/releases/latest)
-- [直接下载 Nothing_Setup_1.5.2.exe](https://github.com/MyLostCH4/Nothing/releases/download/v1.5.2/Nothing_Setup_1.5.2.exe)
+- [直接下载 Nothing_Setup_1.5.3.exe](https://github.com/MyLostCH4/Nothing/releases/download/v1.5.3/Nothing_Setup_1.5.3.exe)
 
-`Nothing_Setup_1.5.2.exe`。`Source code (zip)` 和 `Source code (tar.gz)` 只是源码压缩包，
+`Nothing_Setup_1.5.3.exe`。`Source code (zip)` 和 `Source code (tar.gz)` 只是源码压缩包，
 
 ### 安装步骤
 
-1. 下载 `Nothing_Setup_1.5.2.exe`。
+1. 下载 `Nothing_Setup_1.5.3.exe`。
 2. 双击安装包，在询问是否安装 Nothing 时确认继续。
 3. 安装程序会部署 Nothing、Qt 6、SQLite 驱动和所需的 VC++ 运行库。
 4. 安装完成后 Nothing 自动启动，并生成 `Nothing` 快捷方式。
